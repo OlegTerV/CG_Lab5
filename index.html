@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset=utf-8>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div>
+      <canvas id="glcanvasFigure" width = "700" height = "700"></canvas>
+      <script src="./index.js" type="module"></script>
+    </div>
+    <div class = "parametres">
+      <div class ="linearAttenuation">
+        <label>Линейное затухание</label>
+        <input type="range" id="linear" step="0.000001" min="0.0000000001" max="0.15" value="0.009"/>
+      </div>
+      <div class ="quadraticAttenuation">
+        <label>Квадртатичное затухание</label>
+        <input type="range" id="quadratic" step="0.000001" min="0.0000000001" max="0.05" value="0.0032"/>
+      </div>
+      <div class ="ambientControl">
+        <label>Мощность фонового источника света</label>
+        <input type="range" id="ambient" step="0.1" min="0.0" max="1.0" value="1"/>
+      </div>
+      <div class ="typeShading">
+        <label>Шейдинг: </label>
+        <select id = "typeShadingSelect">
+          <option value="GouraudShading">Гуро</option>
+          <option value="PhongShading">Фонг</option>
+        </select>
+      </div>
+      <div class ="typeLighting">
+        <label>Световая модель: </label>
+        <select id = "typeLightingSelect">
+          <option value="LambertLight">Ламберт</option>
+          <option value="PhongLight">Фонг</option>
+          <option value="ToonShading">Toon shading</option>
+        </select>
+      </div>
+      <div class ="contribution_of_textures">
+        <label>Вклад текстур: </label>
+        <input type="range" id="contribution" step="0.1" min="0.0" max="1.0" value="1.0"/>
+      </div>
+    </div>
+  </body>
+</html>

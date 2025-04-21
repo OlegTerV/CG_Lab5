@@ -1,0 +1,33 @@
+body {
+    display: flex;
+    flex-direction: row;
+}
+
+.parametres {
+    display: flex;
+    flex-direction: column;
+}
+.linearAttenuation {
+    padding-bottom: 5px;
+    padding-left: 5px;
+}
+.quadraticAttenuation {
+    padding-bottom: 5px;
+    padding-left: 5px;
+}
+.ambientControl{
+    padding-bottom: 5px;
+    padding-left: 5px;
+}
+.typeShading{
+    padding-bottom: 5px;
+    padding-left: 5px;
+}
+.typeLighting{
+    padding-bottom: 5px;
+    padding-left: 5px;
+}
+.contribution_of_textures{
+    padding-bottom: 5px;
+    padding-left: 5px;
+}

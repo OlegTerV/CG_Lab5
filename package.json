@@ -1,0 +1,18 @@
+{
+  "dependencies": {
+    "gl-matrix": "^3.4.3",
+    "three": "^0.175.0",
+    "three.js": "^0.77.1"
+  },
+  "name": "labwork2",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "parcel index.html"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
