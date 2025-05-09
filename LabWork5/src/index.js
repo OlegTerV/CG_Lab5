@@ -5,14 +5,17 @@ import {
 import { vsSourceCubePhong, fsSourceCubePhong } from "./cubeShadersPhong.js";
 
 import { mat3, mat4 } from "gl-matrix";
-import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { Mesh } from 'webgl-obj-loader';
 
 import gorundText from "./ground.jpg"; //0
-import treeText from "./figures/tree.jpg"; //1
-import lampText from "./figures/lamp.jpg"; //2
+import treeText from "./figures/tree.png"; //1
+import lampText from "./figures/snowman.png"; //2
 import houseText from "./figures/house/house1.jpg"; //3
-
-import house1 from "./figures/house/house.obj?url";
+import shedText from "./figures/house/shed1.jpg"; //4
+import stoneText from "./figures/Stone.png"; //5
+//import house1 from "./figures/house/house.obj";
+const house1 = new URL('./figures/house/house.obj', import.meta.url).href;
+const lamp1 = new URL('./figures/lamp.obj', import.meta.url).href;
 
 // Добавляем переменные для модели
 let objModel = null;
@@ -20,6 +23,7 @@ let objVerticesBuffer;
 let objNormalsBuffer;
 let objTextureCoordsBuffer;
 let objIndicesBuffer;
+let treeTextureCoordsBuffer;
 
 let lampModel = null;
 let lampVerticesBuffer;
@@ -33,7 +37,19 @@ let houseNormalsBuffer;
 let houseTextureCoordsBuffer;
 let houseIndicesBuffer;
 
-let textures = [gorundText, treeText, lampText, houseText];
+let shedIndicesCount;
+let shedVerticesBuffer;
+let shedNormalsBuffer;
+let shedIndicesBuffer;
+let shedTextureCoordsBuffer;
+
+let stoneIndicesCount;
+let stoneVerticesBuffer;
+let stoneNormalsBuffer;
+let stoneIndicesBuffer;
+let stoneTextureCoordsBuffer;
+
+let textures = [gorundText, treeText, lampText, houseText, shedText, stoneText];
 
 let texturesScene = [];
 
@@ -72,6 +88,8 @@ let houseIndicesCount = 0;
 let treePositions = [];
 let lampPositions = [];
 let housePositions = [];
+let shedPositions = [];
+let stonePositions = [];
 
 document
   .getElementById("typeShadingSelect")
@@ -258,7 +276,7 @@ function main(vsSourceCube, fsSourceCube, typeLighting) {
       cameraPosition[2] - Math.cos(cameraYaw) * lookDistance, // Z
     ];
     mat4.lookAt(mvMatrix, cameraPosition, target, up);
-    drawPedestal(shaderProgram);
+    //drawPedestal(shaderProgram);
   };
 
   document.getElementById("linear").oninput = function (e) {
@@ -276,11 +294,51 @@ function main(vsSourceCube, fsSourceCube, typeLighting) {
 
   let colorsCube = [1.0, 1.0, 1.0, 1.0];
   initBuffersCube(colorsCube);
-  //loadModel(tree1);
-  //loadModelamp(lamp1);
-  //loadModeHouse(house1);
   loadObjModels();
-  countData(100, 10, 3);
+  countData(100, 10, 3, 10, 10);
+
+  // Инициализация скоростей для ламп
+  for (let i = 0; i < 10; i++) {
+    lampPositions[i].vx = (Math.random() - 0.5) * 2; // Случайная скорость от -1 до 1 единицы в секунду
+    lampPositions[i].vz = (Math.random() - 0.5) * 2;
+  }
+
+  // Запуск цикла анимации
+  let lastTime = Date.now();
+  function animate() {
+    const currentTime = Date.now();
+    const deltaTime = (currentTime - lastTime) / 1000; // Время в секундах
+    lastTime = currentTime;
+
+    update(deltaTime);
+    drawPedestal(shaderProgram);
+    requestAnimationFrame(animate);
+  }
+  animate();
+}
+
+function update(deltaTime) {
+  // Обновление позиций ламп
+  for (let i = 0; i < 10; i++) {
+    lampPositions[i].x += lampPositions[i].vx * deltaTime;
+    lampPositions[i].z += lampPositions[i].vz * deltaTime;
+
+    // Проверка границ и изменение направления при необходимости
+    if (lampPositions[i].x > 15) {
+      lampPositions[i].x = 15;
+      lampPositions[i].vx *= -1;
+    } else if (lampPositions[i].x < -15) {
+      lampPositions[i].x = -15;
+      lampPositions[i].vx *= -1;
+    }
+    if (lampPositions[i].z > 15) {
+      lampPositions[i].z = 15;
+      lampPositions[i].vz *= -1;
+    } else if (lampPositions[i].z < -15) {
+      lampPositions[i].z = -15;
+      lampPositions[i].vz *= -1;
+    }
+  }
 }
 
 function setMatrixUniforms(shaderProgram, pMatrix, mvMatrix, nMatrix) {
@@ -497,7 +555,7 @@ function drawPedestal(shaderProgram) {
   setupLights(shaderProgram);
   setupContributionOfTextures(shaderProgram);
   drawSceneCube(texturesScene[0]);
-  /*
+  
   // Сохранить исходную матрицу
   for (let i = 0; i < 100; i++) {
     const originalMvMatrix = mat4.clone(mvMatrix);
@@ -528,13 +586,13 @@ function drawPedestal(shaderProgram) {
     ]);
     mat4.rotate(mvMatrix, mvMatrix, lampPositions[i].randAngle, [0, 1, 0]);
     //mat4.rotate(mvMatrix, mvMatrix, lampPositions[i].randMinAngle, [0, 0, 1]);
-    mat4.scale(mvMatrix, mvMatrix, [0.25, 0.25, 0.25]);
+    mat4.scale(mvMatrix, mvMatrix, [0.3, 0.3, 0.3]);
 
     setMatrixUniforms(shaderProgram, pMatrix, mvMatrix, nMatrix);
     drawModelLamp();
     mat4.copy(mvMatrix, originalMvMatrix);
   }
-*/
+
   for (let i = 0; i < 3; i++) {
     const originalMvMatrix = mat4.clone(mvMatrix);
     mat4.translate(mvMatrix, mvMatrix, [
@@ -548,8 +606,44 @@ function drawPedestal(shaderProgram) {
 
     setMatrixUniforms(shaderProgram, pMatrix, mvMatrix, nMatrix);
     drawModelHouse();
+    //drawModelLamp();
     mat4.copy(mvMatrix, originalMvMatrix);
   }
+
+  for (let i = 0; i < 2; i++) {
+    const originalMvMatrix = mat4.clone(mvMatrix);
+    mat4.translate(mvMatrix, mvMatrix, [
+      shedPositions[i].x,
+      14.897,
+      shedPositions[i].z,
+    ]);
+    mat4.rotate(mvMatrix, mvMatrix, shedPositions[i].randAngle, [0, 1, 0]);
+    //mat4.rotate(mvMatrix, mvMatrix, 3,14, [0, 0, 1]);
+    mat4.scale(mvMatrix, mvMatrix, [0.2, 0.2, 0.2]);
+
+    setMatrixUniforms(shaderProgram, pMatrix, mvMatrix, nMatrix);
+    drawModelShed();
+    //drawModelLamp();
+    mat4.copy(mvMatrix, originalMvMatrix);
+  }
+
+  for (let i = 0; i < 4; i++) {
+    const originalMvMatrix = mat4.clone(mvMatrix);
+    mat4.translate(mvMatrix, mvMatrix, [
+      stonePositions[i].x,
+      14.897,
+      stonePositions[i].z,
+    ]);
+    mat4.rotate(mvMatrix, mvMatrix, stonePositions[i].randAngle, [0, 1, 0]);
+    //mat4.rotate(mvMatrix, mvMatrix, 3,14, [0, 0, 1]);
+    mat4.scale(mvMatrix, mvMatrix, [0.35, 0.5, 0.35]);
+
+    setMatrixUniforms(shaderProgram, pMatrix, mvMatrix, nMatrix);
+    drawModelStone();
+    //drawModelLamp();
+    mat4.copy(mvMatrix, originalMvMatrix);
+  }
+  
 }
 
 function setTextures(shaderProgram) {
@@ -605,32 +699,15 @@ function changeShading() {
   }
 }
 
-/*function loadModel(url) {
-  const loader = new OBJLoader();
-  loader.load(
-    url,
-    (object) => {
-      const geometry = object.children[0].geometry;
-      geometry.computeVertexNormals(); // Вычисляем нормали если их нет
-      initModelBuffers(geometry);
-    },
-    undefined,
-    (error) => {
-      alert("Error loading model:", error);
-    }
-  );
-}*/
 
 function initModelBuffers(geometry) {
-  // Преобразуем геометрию в треугольники
-  const indices = [];
-  const vertices = geometry.attributes.position.array;
-  const normals = geometry.attributes.normal.array;
+  const meshTree= new Mesh(geometry);
 
-  // Генерируем индексы если нужно
-  for (let i = 0; i < vertices.length / 3; i++) {
-    indices.push(i);
-  }
+  // Преобразуем геометрию в треугольники
+  const indices = meshTree.indices;
+  const vertices = meshTree.vertices;
+  const normals = meshTree.vertexNormals;
+  const texture = meshTree.textures;
 
   treeIndicesCount = indices.length;
 
@@ -652,6 +729,11 @@ function initModelBuffers(geometry) {
     new Uint16Array(indices),
     gl.STATIC_DRAW
   );
+
+  treeTextureCoordsBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, treeTextureCoordsBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texture), gl.STATIC_DRAW);
+  treeTextureCoordsBuffer.itemSize = 2;
 }
 function drawModel() {
   if (!objVerticesBuffer || !objIndicesBuffer) return;
@@ -665,6 +747,8 @@ function drawModel() {
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, objIndicesBuffer);
 
   // Применяем текстуры
+  gl.bindBuffer(gl.ARRAY_BUFFER, treeTextureCoordsBuffer);
+  gl.vertexAttribPointer(vertexTextureAttribute, 2, gl.FLOAT, false, 0, 0);
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, texturesScene[1]);
 
@@ -672,31 +756,16 @@ function drawModel() {
   gl.drawElements(gl.TRIANGLES, treeIndicesCount, gl.UNSIGNED_SHORT, 0);
 }
 
-/*function loadModelamp(url) {
-  const loader = new OBJLoader();
-  loader.load(
-    url,
-    (object) => {
-      const geometry = object.children[0].geometry;
-      geometry.computeVertexNormals(); // Вычисляем нормали если их нет
-      initModelBuffersLamp(geometry);
-    },
-    undefined,
-    (error) => {
-      alert("Error loading model:", error);
-    }
-  );
-}*/
-function initModelBuffersLamp(geometry) {
-  // Преобразуем геометрию в треугольники
-  const indices = [];
-  const vertices = geometry.attributes.position.array;
-  const normals = geometry.attributes.normal.array;
 
-  // Генерируем индексы если нужно
-  for (let i = 0; i < vertices.length / 3; i++) {
-    indices.push(i);
-  }
+function initModelBuffersLamp(geometry) {
+
+  const meshLamp= new Mesh(geometry);
+
+  // Преобразуем геометрию в треугольники
+  const indices = meshLamp.indices;
+  const vertices = meshLamp.vertices;
+  const normals = meshLamp.vertexNormals;
+  const texture = meshLamp.textures;
 
   lampIndicesCount = indices.length;
 
@@ -718,6 +787,11 @@ function initModelBuffersLamp(geometry) {
     new Uint16Array(indices),
     gl.STATIC_DRAW
   );
+
+  lampTextureCoordsBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, lampTextureCoordsBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texture), gl.STATIC_DRAW);
+  lampTextureCoordsBuffer.itemSize = 2;
 }
 function drawModelLamp() {
   if (!lampVerticesBuffer || !lampIndicesBuffer) return;
@@ -730,7 +804,8 @@ function drawModelLamp() {
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, lampIndicesBuffer);
 
-  // Применяем текстуры
+  gl.bindBuffer(gl.ARRAY_BUFFER, lampTextureCoordsBuffer);
+  gl.vertexAttribPointer(vertexTextureAttribute, 2, gl.FLOAT, false, 0, 0);
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, texturesScene[2]);
 
@@ -738,25 +813,9 @@ function drawModelLamp() {
   gl.drawElements(gl.TRIANGLES, lampIndicesCount, gl.UNSIGNED_SHORT, 0);
 }
 
-/*function loadModeHouse(url) {
-  const loader = new OBJLoader();
-  loader.load(
-    url,
-    (object) => {
-      const geometry = object.children[0].geometry;
-
-      //geometry.computeVertexNormals(); // Вычисляем нормали если их нет
-      initModelBuffersHouse(geometry);
-    },
-    undefined,
-    (error) => {
-      alert("Error loading model:", error.message);
-    }
-  );
-}*/
 
 function initModelBuffersHouse(houseObjString) {
-  const dataModel = parseObj2(houseObjString);
+  /*const dataModel = parseObj2(houseObjString);
   console.log(dataModel[0].length);
   console.log(dataModel[1].length);
   console.log(dataModel[2].length);
@@ -765,21 +824,25 @@ function initModelBuffersHouse(houseObjString) {
   const vertices = dataModel[1];
   const normals = dataModel[2];
   const texture = dataModel[3];
-
-  /*
-  const indices = [];
-  const vertices = geometry.attributes.position.array;
-  const normals = geometry.attributes.normal.array;
-  const texture = geometry.attributes.uv.array;
-
-  for (let i = 0; i < vertices.length / 3; i++) {
-    indices.push(i);
-  }
 */
-  console.log(indices.length);
-  console.log(vertices.length);
-  console.log(normals.length);
-  console.log(texture.length);
+  /*
+  const indices = houseObjString.index?.array;
+  const vertices = houseObjString.attributes.position.array;
+  const normals = houseObjString.attributes.normal.array;
+  const texture = houseObjString.attributes.uv.array;
+*/
+
+  const meshHouse = new Mesh(houseObjString);
+
+  console.log(meshHouse.indices.length);
+  console.log(meshHouse.vertices.length);
+  console.log(meshHouse.vertexNormals.length);
+  console.log(meshHouse.textures.length);
+
+  const indices = meshHouse.indices;
+  const vertices = meshHouse.vertices;
+  const normals = meshHouse.vertexNormals;
+  const texture = meshHouse.textures;
 
   houseIndicesCount = indices.length;
 
@@ -827,199 +890,158 @@ function drawModelHouse() {
   gl.drawElements(gl.TRIANGLES, houseIndicesCount, gl.UNSIGNED_SHORT, 0);
 }                                                                                                 
 
-function parseObj(objContent) {
-  const lines = objContent.split("\n");
-  const indices = [];
-  const vertices = [];
-  const normals = [];
-  const texCoords = [];
+function initModelBuffersShed(houseObjString) {
+  const meshHouse = new Mesh(houseObjString);
 
-  const _vertices = [];
-  const _normals = [];
-  const _texCoords = [];
+  console.log(meshHouse.indices.length);
+  console.log(meshHouse.vertices.length);
+  console.log(meshHouse.vertexNormals.length);
+  console.log(meshHouse.textures.length);
 
-  for (const line of lines) {
-    const tokens = line.trim().split(/[ ]+/);
-    if (tokens.length === 0) continue;
+  const indices = meshHouse.indices;
+  const vertices = meshHouse.vertices;
+  const normals = meshHouse.vertexNormals;
+  const texture = meshHouse.textures;
 
-    switch (tokens[0]) {
-      case "v":
-        _vertices.push([
-          parseFloat(tokens[1]),
-          parseFloat(tokens[2]),
-          parseFloat(tokens[3]),
-        ]);
-        break;
+  shedIndicesCount = indices.length;
 
-      case "vn":
-        _normals.push([
-          parseFloat(tokens[1]),
-          parseFloat(tokens[2]),
-          parseFloat(tokens[3]),
-        ]);
-        break;
+  // Создаем буфер вершин
+  shedVerticesBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, shedVerticesBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
-      case "vt":
-        _texCoords.push([parseFloat(tokens[1]), parseFloat(tokens[2])]);
-        break;
+  // Создаем буфер нормалей
+  shedNormalsBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, shedNormalsBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
+  // Создаем индексный буфер
+  shedIndicesBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, shedIndicesBuffer);
+  gl.bufferData(
+    gl.ELEMENT_ARRAY_BUFFER,
+    new Uint16Array(indices),
+    gl.STATIC_DRAW
+  );
 
-      case "f":
-        const first = tokens[1]
-          .split("/")
-          .map((i) => (i ? parseInt(i) - 1 : -1));
-        for (let i = 2; i < tokens.length - 1; i += 1) {
-          let cur = tokens[i].split("/").map((x) => (x ? parseInt(x) - 1 : -1));
-          let next = tokens[i + 1]
-            .split("/")
-            .map((x) => (x ? parseInt(x) - 1 : -1));
-
-          const vertex0 = {
-            position: _vertices[first[0]],
-          };
-          if (first.length > 1) {
-            const textureIndex = first[1];
-            vertex0.texCoord = _texCoords[textureIndex];
-            if (first.length > 2) {
-              const normalIndex = first[2];
-              vertex0.normal = _normals[normalIndex];
-            }
-          }
-          vertices.push(vertex0);
-          indices.push(indices.length);
-
-          const vertex1 = {
-            position: _vertices[cur[0]],
-          };
-          if (cur.length > 1) {
-            const textureIndex = cur[1];
-            vertex1.texCoord = _texCoords[textureIndex];
-            if (cur.length > 2) {
-              const normalIndex = cur[2];
-              vertex1.normal = _normals[normalIndex];
-            }
-          }
-          vertices.push(vertex1);
-          indices.push(indices.length);
-
-          const vertex2 = {
-            position: _vertices[next[0]],
-          };
-          if (next.length > 1) {
-            const textureIndex = next[1];
-            vertex2.texCoord = _texCoords[textureIndex];
-            if (next.length > 2) {
-              const normalIndex = next[2];
-              vertex2.normal = _normals[normalIndex];
-            }
-          }
-          vertices.push(vertex2);
-          indices.push(indices.length);
-        }
-    }
-  }
-
-  return [indices, vertices, _normals, _texCoords];
+  shedTextureCoordsBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, shedTextureCoordsBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texture), gl.STATIC_DRAW);
+  shedTextureCoordsBuffer.itemSize = 2;
 }
-function parseObj2(objContent) {
-  console.log("Input OBJ content:", objContent.slice(0, 100) + "...");
-  const lines = objContent.split("\n");
-  const _vertices = [];
-  const _normals = [];
-  const _texCoords = [];
-  const vertices = [];
+function drawModelShed() {
+  if (!shedVerticesBuffer || !shedIndicesBuffer || !shedTextureCoordsBuffer)
+    return;
 
-  // Первый проход: сбор данных
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
+  gl.bindBuffer(gl.ARRAY_BUFFER, shedVerticesBuffer);
+  gl.vertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0);
 
-    const tokens = trimmed.split(/\s+/);
-    switch (tokens[0]) {
-      case "v":
-        _vertices.push(tokens.slice(1, 4).map(parseFloat));
-        break;
-      case "vn":
-        _normals.push(tokens.slice(1, 4).map(parseFloat));
-        break;
-      case "vt":
-        _texCoords.push(tokens.slice(1, 3).map(parseFloat));
-        break;
-    }
-  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, shedNormalsBuffer);
+  gl.vertexAttribPointer(normPositionAttribute, 3, gl.FLOAT, false, 0, 0);
 
-  // Второй проход: обработка граней
-  // Второй проход: обработка граней и создание вершин
-  const vertexCache = new Map();
-  const uniqueVertices = [];
-  const indices = [];
-  
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed.startsWith("f ")) continue;
+  gl.bindBuffer(gl.ARRAY_BUFFER, shedTextureCoordsBuffer);
+  gl.vertexAttribPointer(vertexTextureAttribute, 2, gl.FLOAT, false, 0, 0);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, texturesScene[4]);
 
-    const faceTokens = trimmed.split(/\s+/).slice(1);
-    if (faceTokens.length < 3) continue;
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, shedIndicesBuffer);
 
-    // Обработка вершин грани
-    const faceIndices = [];
-    for (const token of faceTokens) {
-      if (vertexCache.has(token)) {
-        faceIndices.push(vertexCache.get(token));
-        continue;
-      }
+  // Рисуем модель
+  gl.drawElements(gl.TRIANGLES, shedIndicesCount, gl.UNSIGNED_SHORT, 0);
+} 
 
-      const parts = token.split("/").map(p => p ? parseInt(p) - 1 : -1);
-      const [vIdx, vtIdx, vnIdx] = parts;
-      
-      // Получаем данные с проверкой диапазонов
-      const position = _vertices[vIdx] || [0, 0, 0];
-      const texCoord = (vtIdx >= 0 && vtIdx < _texCoords.length) 
-        ? _texCoords[vtIdx] 
-        : [0, 0];
-      const normal = (vnIdx >= 0 && vnIdx < _normals.length) 
-        ? _normals[vnIdx] 
-        : [0, 1, 0];
 
-      // Добавляем новую уникальную вершину
-      const newIndex = uniqueVertices.length;
-      uniqueVertices.push({ position, texCoord, normal });
-      vertexCache.set(token, newIndex);
-      faceIndices.push(newIndex);
-    }
+function initModelBuffersStone(houseObjString) {
+  const meshHouse = new Mesh(houseObjString);
 
-    // Триангуляция полигона
-    for (let i = 1; i < faceIndices.length - 1; i++) {
-      indices.push(faceIndices[0], faceIndices[i], faceIndices[i + 1]);
-    }
-  }
+  console.log(meshHouse.indices.length);
+  console.log(meshHouse.vertices.length);
+  console.log(meshHouse.vertexNormals.length);
+  console.log(meshHouse.textures.length);
 
-  // Преобразование в плоские массивы
-  const positions = [];
-  const normals = [];
-  const texCoords = [];
-  
-  for (const vertex of uniqueVertices) {
-    positions.push(...vertex.position);
-    normals.push(...vertex.normal);
-    texCoords.push(...vertex.texCoord);
-  }
+  const indices = meshHouse.indices;
+  const vertices = meshHouse.vertices;
+  const normals = meshHouse.vertexNormals;
+  const texture = meshHouse.textures;
 
-  return [indices, positions, normals, texCoords]
+  stoneIndicesCount = indices.length;
+
+  // Создаем буфер вершин
+  stoneVerticesBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, stoneVerticesBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+  // Создаем буфер нормалей
+  stoneNormalsBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, stoneNormalsBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
+  // Создаем индексный буфер
+  stoneIndicesBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, stoneIndicesBuffer);
+  gl.bufferData(
+    gl.ELEMENT_ARRAY_BUFFER,
+    new Uint16Array(indices),
+    gl.STATIC_DRAW
+  );
+
+  stoneTextureCoordsBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, stoneTextureCoordsBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texture), gl.STATIC_DRAW);
+  stoneTextureCoordsBuffer.itemSize = 2;
 }
+function drawModelStone() {
+  if (!stoneVerticesBuffer || !stoneIndicesBuffer || !stoneTextureCoordsBuffer)
+    return;
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, stoneVerticesBuffer);
+  gl.vertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, stoneNormalsBuffer);
+  gl.vertexAttribPointer(normPositionAttribute, 3, gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, stoneTextureCoordsBuffer);
+  gl.vertexAttribPointer(vertexTextureAttribute, 2, gl.FLOAT, false, 0, 0);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, texturesScene[5]);
+
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, stoneIndicesBuffer);
+
+  // Рисуем модель
+  gl.drawElements(gl.TRIANGLES, stoneIndicesCount, gl.UNSIGNED_SHORT, 0);
+} 
 
 async function loadObjModels() {
   const houseObjString = await (
     await fetch(`src/figures/house/house.obj`)
   ).text();
   initModelBuffersHouse(houseObjString);
-  //lampObjString = await (await fetch("./figures/lamp.obj")).text();
-  //treeObjString = await (await fetch("./figures/tree1.obj")).text();
+
+  const lampObjString = await (
+    await fetch(`src/figures/snowman.obj`)
+  ).text();
+  initModelBuffersLamp(lampObjString);
+
+  const treeObjString = await (
+    await fetch(`src/figures/tree1.obj`)
+  ).text();
+  initModelBuffers(treeObjString);
+
+  const shedObjString = await (
+    await fetch(`src/figures/house/shed1.obj`)
+  ).text();
+  initModelBuffersShed(shedObjString);
+
+  const stoneObjString = await (
+    await fetch(`src/figures/stone.obj`)
+  ).text();
+  initModelBuffersStone(stoneObjString);
 }
 
-function countData(countTrees, countLamps, countHouses) {
+function countData(countTrees, countLamps, countHouses, countSheds, countStones) {
   treePositions = [];
   lampPositions = [];
   housePositions = [];
+  shedPositions = [];
+  stonePositions = [];
 
   for (let i = 0; i < countTrees; i++) {
     const x = Math.random() * 30.0 - 15.0;
@@ -1055,6 +1077,32 @@ function countData(countTrees, countLamps, countHouses) {
     const randAngle = Math.random() * 360.0;
     const randMinAngle = Math.random() * 0.1;
     housePositions.push({
+      x: x,
+      z: z,
+      randAngle: randAngle,
+      randMinAngle: randMinAngle,
+    });
+  }
+
+  for (let i = 0; i < countSheds; i++) {
+    const x = Math.random() * 30.0 - 15.0;
+    const z = Math.random() * 30.0 - 15.0;
+    const randAngle = Math.random() * 360.0;
+    const randMinAngle = Math.random() * 0.1;
+    shedPositions.push({
+      x: x,
+      z: z,
+      randAngle: randAngle,
+      randMinAngle: randMinAngle,
+    });
+  }
+
+  for (let i = 0; i < countStones; i++) {
+    const x = Math.random() * 30.0 - 15.0;
+    const z = Math.random() * 30.0 - 15.0;
+    const randAngle = Math.random() * 360.0;
+    const randMinAngle = Math.random() * 0.1;
+    stonePositions.push({
       x: x,
       z: z,
       randAngle: randAngle,
