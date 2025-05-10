@@ -79,7 +79,7 @@ let contributionControl = 1.0;
 var cameraPosition = [0, 15.3, 15.0]; // Позиция камеры над кубом
 var target = [0, 15.3, 0]; // Направление взгляда
 var up = [0, 1, 0]; // Вектор "вверх" камеры
-const moveSpeed = 0.1;
+const moveSpeed = 5.0;
 let cameraYaw = 0;
 let treeIndicesCount = 0;
 let lampIndicesCount = 0;
@@ -90,6 +90,8 @@ let lampPositions = [];
 let housePositions = [];
 let shedPositions = [];
 let stonePositions = [];
+
+let animationFrameId = null;
 
 document
   .getElementById("typeShadingSelect")
@@ -128,6 +130,10 @@ function initWebGL(canvas) {
 }
 
 function main(vsSourceCube, fsSourceCube, typeLighting) {
+  if (animationFrameId != null) {
+    cancelAnimationFrame(animationFrameId);
+  }
+
   mat4.perspective(pMatrix, 1.04, 700 / 700, 0.1, 100.0);
   mat4.identity(mvMatrix);
   mat4.lookAt(mvMatrix, cameraPosition, target, up);
@@ -234,50 +240,7 @@ function main(vsSourceCube, fsSourceCube, typeLighting) {
 
   //drawPedestal(shaderProgram);
 
-  document.onkeydown = function (e) {
-    const lookDistance = 5;
-
-    const dirX = target[0] - cameraPosition[0];
-    const dirZ = target[2] - cameraPosition[2];
-
-    const normalizedDirX = dirX / lookDistance;
-    const normalizedDirZ = dirZ / lookDistance;
-
-    const perpendicularVectorX = -normalizedDirZ;
-    const perpendicularVectorZ = normalizedDirX;
-
-    switch (e.key) {
-      case "w":
-        cameraPosition[0] += moveSpeed * normalizedDirX;
-        cameraPosition[2] += moveSpeed * normalizedDirZ;
-        break;
-      case "a":
-        cameraPosition[0] -= moveSpeed * perpendicularVectorX;
-        cameraPosition[2] -= moveSpeed * perpendicularVectorZ;
-        break;
-      case "s":
-        cameraPosition[0] -= moveSpeed * normalizedDirX;
-        cameraPosition[2] -= moveSpeed * normalizedDirZ;
-        break;
-      case "d":
-        cameraPosition[0] += moveSpeed * perpendicularVectorX;
-        cameraPosition[2] += moveSpeed * perpendicularVectorZ;
-        break;
-      case "q": // Поворот влево
-        cameraYaw -= 0.1;
-        break;
-      case "e": // Поворот вправо
-        cameraYaw += 0.1;
-        break;
-    }
-    target = [
-      cameraPosition[0] + Math.sin(cameraYaw) * lookDistance, // X
-      cameraPosition[1], // Y (не меняется)
-      cameraPosition[2] - Math.cos(cameraYaw) * lookDistance, // Z
-    ];
-    mat4.lookAt(mvMatrix, cameraPosition, target, up);
-    //drawPedestal(shaderProgram);
-  };
+  
 
   document.getElementById("linear").oninput = function (e) {
     changeAttenuation(shaderProgram);
@@ -297,47 +260,89 @@ function main(vsSourceCube, fsSourceCube, typeLighting) {
   loadObjModels();
   countData(100, 10, 3, 10, 10);
 
-  // Инициализация скоростей для ламп
-  for (let i = 0; i < 10; i++) {
-    lampPositions[i].vx = (Math.random() - 0.5) * 2; // Случайная скорость от -1 до 1 единицы в секунду
-    lampPositions[i].vz = (Math.random() - 0.5) * 2;
-  }
+  let lastTimeAnimate = Date.now();
+  function animate(){
+    let currentTimeAnimate= Date.now();
+    let deltaTime = (currentTimeAnimate-lastTimeAnimate)/1000;
+    lastTimeAnimate = currentTimeAnimate;
 
-  // Запуск цикла анимации
-  let lastTime = Date.now();
-  function animate() {
-    const currentTime = Date.now();
-    const deltaTime = (currentTime - lastTime) / 1000; // Время в секундах
-    lastTime = currentTime;
-
-    update(deltaTime);
     drawPedestal(shaderProgram);
-    requestAnimationFrame(animate);
+    updatePosition(deltaTime);
+    animationFrameId = requestAnimationFrame(animate);
   }
   animate();
 }
 
-function update(deltaTime) {
-  // Обновление позиций ламп
-  for (let i = 0; i < 10; i++) {
-    lampPositions[i].x += lampPositions[i].vx * deltaTime;
-    lampPositions[i].z += lampPositions[i].vz * deltaTime;
+function updatePosition(deltaTime){
+  document.onkeydown = function (e) {
+    const lookDistance = 5;
 
-    // Проверка границ и изменение направления при необходимости
-    if (lampPositions[i].x > 15) {
-      lampPositions[i].x = 15;
-      lampPositions[i].vx *= -1;
-    } else if (lampPositions[i].x < -15) {
-      lampPositions[i].x = -15;
-      lampPositions[i].vx *= -1;
+    const dirX = target[0] - cameraPosition[0];
+    const dirZ = target[2] - cameraPosition[2];
+
+    const normalizedDirX = dirX / lookDistance;
+    const normalizedDirZ = dirZ / lookDistance;
+
+    const perpendicularVectorX = -normalizedDirZ;
+    const perpendicularVectorZ = normalizedDirX;
+
+    switch (e.key) {
+      case "w":
+        cameraPosition[0] += moveSpeed * normalizedDirX * deltaTime;
+        cameraPosition[2] += moveSpeed * normalizedDirZ * deltaTime;
+        break;
+      case "a":
+        cameraPosition[0] -= moveSpeed * perpendicularVectorX * deltaTime;
+        cameraPosition[2] -= moveSpeed * perpendicularVectorZ * deltaTime;
+        break;
+      case "s":
+        cameraPosition[0] -= moveSpeed * normalizedDirX * deltaTime;
+        cameraPosition[2] -= moveSpeed * normalizedDirZ * deltaTime;
+        break;
+      case "d":
+        cameraPosition[0] += moveSpeed * perpendicularVectorX * deltaTime;
+        cameraPosition[2] += moveSpeed * perpendicularVectorZ * deltaTime;
+        break;
+      case "q": // Поворот влево
+        cameraYaw -= moveSpeed * deltaTime;
+        break;
+      case "e": // Поворот вправо
+        cameraYaw += moveSpeed * deltaTime;
+        break;
     }
-    if (lampPositions[i].z > 15) {
-      lampPositions[i].z = 15;
-      lampPositions[i].vz *= -1;
-    } else if (lampPositions[i].z < -15) {
-      lampPositions[i].z = -15;
-      lampPositions[i].vz *= -1;
+    target = [
+      cameraPosition[0] + Math.sin(cameraYaw) * lookDistance, // X
+      cameraPosition[1], // Y (не меняется)
+      cameraPosition[2] - Math.cos(cameraYaw) * lookDistance, // Z
+    ];
+    mat4.lookAt(mvMatrix, cameraPosition, target, up);
+    //drawPedestal(shaderProgram);
+  };
+
+  for (let i=0; i<10; i++) {
+    if ((lampPositions[i].x<15) && (lampPositions[i].z<15) && (lampPositions[i].x>-15) && (lampPositions[i].z>-15)) {
+      lampPositions[i].x += lampPositions[i].speed_x * deltaTime;
+      lampPositions[i].z += lampPositions[i].speed_z * deltaTime;
     }
+    else if ((lampPositions[i].x >= 15) || (lampPositions[i].x <= -15)) {
+      if (lampPositions[i].x >= 15) {
+        lampPositions[i].x = 14.9
+      }
+      else if (lampPositions[i].x <= -15) {
+        lampPositions[i].x = -14.9
+      }
+      lampPositions[i].speed_x *= (-1);
+    }
+    else if ((lampPositions[i].z >= 15) || (lampPositions[i].z <= -15)) {
+      if (lampPositions[i].z >= 15) {
+        lampPositions[i].z = 14.9
+      }
+      else if (lampPositions[i].z <= -15) {
+        lampPositions[i].z = -14.9
+      }
+      lampPositions[i].speed_z *= (-1); 
+    }
+
   }
 }
 
@@ -677,7 +682,7 @@ function changeAttenuation(shaderProgram) {
   ambientControl = document.getElementById("ambient").value;
   contributionControl = document.getElementById("contribution").value;
 
-  drawPedestal(shaderProgram);
+  //drawPedestal(shaderProgram);
 }
 
 function changeShading() {
@@ -1061,11 +1066,15 @@ function countData(countTrees, countLamps, countHouses, countSheds, countStones)
   for (let i = 0; i < countLamps; i++) {
     const x = Math.random() * 30.0 - 15.0;
     const z = Math.random() * 30.0 - 15.0;
+    const speed_x = Math.random()*1.5;
+    const speed_z = Math.random()*1.5;
     const randAngle = Math.random() * 360.0;
     const randMinAngle = Math.random() * 0.1;
     lampPositions.push({
       x: x,
       z: z,
+      speed_x: speed_x,
+      speed_z: speed_z,
       randAngle: randAngle,
       randMinAngle: randMinAngle,
     });
@@ -1112,3 +1121,76 @@ function countData(countTrees, countLamps, countHouses, countSheds, countStones)
 }
 
 changeShading();
+
+
+function initData () {
+objModel = null;
+objVerticesBuffer = null;
+objNormalsBuffer = null;
+objTextureCoordsBuffer = null;
+objIndicesBuffer = null;
+treeTextureCoordsBuffer = null; 
+
+lampModel = null;
+lampVerticesBuffer = null;
+lampNormalsBuffer = null;
+lampTextureCoordsBuffer = null;
+lampIndicesBuffer = null;
+
+houseModel = null;
+houseVerticesBuffer = null;
+houseNormalsBuffer = null;
+houseTextureCoordsBuffer = null;
+houseIndicesBuffer = null;
+
+shedIndicesCount = null;
+shedVerticesBuffer = null;
+shedNormalsBuffer = null;
+shedIndicesBuffer = null;
+shedTextureCoordsBuffer = null;
+
+stoneIndicesCount = null;
+stoneVerticesBuffer = null;
+stoneNormalsBuffer = null;
+stoneIndicesBuffer = null;
+stoneTextureCoordsBuffer = null;
+
+texturesScene = [];
+
+gl = null;
+vertexPositionAttribute = null;
+colorPositionAttribute = null;
+normPositionAttribute = null;
+vertexTextureAttribute = null;
+cubeVerticesBuffer = null;
+cubeIndicesBuffer = null;
+cubeColorsBuffer = null;
+cubeNormalsBuffer = null;
+textureCoordsBuffer = null;
+mvMatrix = mat4.create();
+pMatrix = mat4.create();
+nMatrix = mat3.create();
+rotationAngle = 0;
+rotationAngle2 = 0;
+rotationAngle3 = 0;
+
+attenuationConstant = 1.0;
+attenuationLinear = 0.009;
+attenuationQuadratic = 0.0032;
+ambientControl = 1;
+contributionControl = 1.0;
+
+cameraPosition = [0, 15.3, 15.0]; // Позиция камеры над кубом
+target = [0, 15.3, 0]; // Направление взгляда
+up = [0, 1, 0]; // Вектор "вверх" камеры
+cameraYaw = 0;
+treeIndicesCount = 0;
+lampIndicesCount = 0;
+houseIndicesCount = 0;
+
+treePositions = [];
+lampPositions = [];
+housePositions = [];
+shedPositions = [];
+stonePositions = [];
+}
