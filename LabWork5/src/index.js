@@ -4,7 +4,7 @@ import {
 } from "./cubeShadersGouraud.js";
 import { vsSourceCubePhong, fsSourceCubePhong } from "./cubeShadersPhong.js";
 
-import { mat3, mat4 } from "gl-matrix";
+import { mat3, mat4, vec4 } from "gl-matrix";
 import { Mesh } from 'webgl-obj-loader';
 
 import gorundText from "./ground.jpg"; //0
@@ -71,15 +71,15 @@ var rotationAngle2 = 0;
 var rotationAngle3 = 0;
 
 let attenuationConstant = 1.0;
-let attenuationLinear = 0.009;
-let attenuationQuadratic = 0.0032;
+let attenuationLinear = 0.3;
+let attenuationQuadratic = 0.2;
 let ambientControl = 1;
 let contributionControl = 1.0;
 
 var cameraPosition = [0, 15.3, 15.0]; // Позиция камеры над кубом
 var target = [0, 15.3, 0]; // Направление взгляда
 var up = [0, 1, 0]; // Вектор "вверх" камеры
-const moveSpeed = 5.0;
+const moveSpeed = 5.0; //5.0
 let cameraYaw = 0;
 let treeIndicesCount = 0;
 let lampIndicesCount = 0;
@@ -92,6 +92,11 @@ let shedPositions = [];
 let stonePositions = [];
 
 let animationFrameId = null;
+
+let flagSnowman = 1;
+let flagBuilding = 1;
+let flagSpotlight = 1;
+
 
 document
   .getElementById("typeShadingSelect")
@@ -177,6 +182,8 @@ function main(vsSourceCube, fsSourceCube, typeLighting) {
     shaderProgram,
     "uLightPosition"
   );
+
+  ///Снеговики///
   shaderProgram.uniformAmbientLightColor = gl.getUniformLocation(
     shaderProgram,
     "uAmbientLightColor"
@@ -189,7 +196,53 @@ function main(vsSourceCube, fsSourceCube, typeLighting) {
     shaderProgram,
     "uSpecularLightColor"
   );
-
+  shaderProgram.uniformLightPositionsSnowmans = gl.getUniformLocation(
+    shaderProgram,
+    "uLightPositionsSnowmans"
+  );
+  ///Дома///
+  shaderProgram.uniformAmbientLightColorBuilding = gl.getUniformLocation(
+    shaderProgram,
+    "uAmbientLightColorBuilding"
+  );
+  shaderProgram.uniformDiffuseLightColorBuilding = gl.getUniformLocation(
+    shaderProgram,
+    "uDiffuseLightColorBuilding"
+  );
+  shaderProgram.uniformSpecularLightColorBuilding = gl.getUniformLocation(
+    shaderProgram,
+    "uSpecularLightColorBuilding"
+  );
+  shaderProgram.uniformLightPositionsBuildings = gl.getUniformLocation(
+    shaderProgram,
+    "uLightPositionsBuildings"
+  );
+  ///Spotlight///
+  shaderProgram.uniformAmbientLightColorSpotlight = gl.getUniformLocation(
+    shaderProgram,
+    "uAmbientLightColorSpotlight"
+  );
+  shaderProgram.uniformDiffuseLightColorSpotlight = gl.getUniformLocation(
+    shaderProgram,
+    "uDiffuseLightColorSpotlight"
+  );
+  shaderProgram.uniformSpecularLightColorSpotlight = gl.getUniformLocation(
+    shaderProgram,
+    "uSpecularLightColorSpotlight"
+  );
+  shaderProgram.uniformLightPositionsSpotlight = gl.getUniformLocation(
+    shaderProgram,
+    "uLightPositionsSpotlight"
+  );
+  shaderProgram.uniformSpotlightCutoff = gl.getUniformLocation(
+    shaderProgram,
+    "uSpotlightCutoff"
+  );
+  shaderProgram.uniformSpotlightCutoffAttenuation = gl.getUniformLocation(
+    shaderProgram,
+    "uSpotlightCutoffAttenuation"
+  );
+  //////
   shaderProgram.uniformAttenuationConstant = gl.getUniformLocation(
     shaderProgram,
     "uAttenuationConstant"
@@ -225,6 +278,20 @@ function main(vsSourceCube, fsSourceCube, typeLighting) {
     shaderProgram,
     "uSamplerMaterial"
   );
+
+  shaderProgram.uflagSnowmans = gl.getUniformLocation(
+    shaderProgram, 
+    "flagSnowmans"
+  );
+  shaderProgram.uflagBuildings = gl.getUniformLocation(
+    shaderProgram,
+    "flagBuildings"
+  );
+  shaderProgram.uflagSpotlight = gl.getUniformLocation(
+    shaderProgram,
+    "flagSpotlight"
+  );
+
 
   switch (typeLighting) {
     case 1:
@@ -309,6 +376,15 @@ function updatePosition(deltaTime){
       case "e": // Поворот вправо
         cameraYaw += moveSpeed * deltaTime;
         break;
+      case "1": // Поворот вправо
+        flagSpotlight *= (-1);
+        break;
+      case "2": // Поворот вправо
+        flagBuilding *= (-1);
+        break;
+      case "3": // Поворот вправо
+        flagSnowman *= (-1);
+        break;
     }
     target = [
       cameraPosition[0] + Math.sin(cameraYaw) * lookDistance, // X
@@ -344,6 +420,8 @@ function updatePosition(deltaTime){
     }
 
   }
+
+ 
 }
 
 function setMatrixUniforms(shaderProgram, pMatrix, mvMatrix, nMatrix) {
@@ -352,13 +430,41 @@ function setMatrixUniforms(shaderProgram, pMatrix, mvMatrix, nMatrix) {
   gl.uniformMatrix3fv(shaderProgram.NormMatrix, false, nMatrix);
 }
 
-function setupLights(shaderProgram) {
-  //позиция источника света
-  gl.uniform3fv(shaderProgram.uniformLightPosition, [0.0, 50.0, 0.0]);
+function setupLightsSpotlight(shaderProgram) {
   //соствавляющие цвета
+  gl.uniform3fv(shaderProgram.uniformDiffuseLightColorSpotlight, [1.0, 1.0, 1.0]);
+  gl.uniform3fv(shaderProgram.uniformSpecularLightColorSpotlight, [1.0, 1.0, 1.0]);
+
+  gl.uniform1f(shaderProgram.uniformAttenuationConstant, attenuationConstant);
+  gl.uniform1f(shaderProgram.uniformAttenuationLinear, attenuationLinear);
+  gl.uniform1f(shaderProgram.uniformAttenuationQuadratic, attenuationQuadratic);
+  gl.uniform1f(shaderProgram.uniformAmbientControl, ambientControl);
+
+  let spotlightAngle = 15.0; // Половинный угол в градусах (для конуса). Внутренний угол.
+  let spotlightCutoff = Math.cos(spotlightAngle * Math.PI / 180.0);
+  gl.uniform1f(shaderProgram.uniformSpotlightCutoff, spotlightCutoff);
+
+  spotlightAngle = 20.0; // Половинный угол в градусах (для конуса). Внешний угол.
+  spotlightCutoff = Math.cos(spotlightAngle * Math.PI / 180.0);
+  gl.uniform1f(shaderProgram.uniformSpotlightCutoffAttenuation, spotlightCutoff);
+  
+}
+
+function setupDigitalLightsSnowMans(shaderProgram) {
   gl.uniform3fv(shaderProgram.uniformAmbientLightColor, [0.1, 0.1, 0.1]);
-  gl.uniform3fv(shaderProgram.uniformDiffuseLightColor, [0.7, 0.7, 0.7]);
-  gl.uniform3fv(shaderProgram.uniformSpecularLightColor, [1.0, 1.0, 1.0]);
+  gl.uniform3fv(shaderProgram.uniformDiffuseLightColor, [1.0, 0.0, 0.0]);
+  gl.uniform3fv(shaderProgram.uniformSpecularLightColor, [0.0, 0.0, 0.0]);
+
+  gl.uniform1f(shaderProgram.uniformAttenuationConstant, attenuationConstant);
+  gl.uniform1f(shaderProgram.uniformAttenuationLinear, attenuationLinear);
+  gl.uniform1f(shaderProgram.uniformAttenuationQuadratic, attenuationQuadratic);
+  gl.uniform1f(shaderProgram.uniformAmbientControl, ambientControl);
+}
+
+function setupStaticLightsBuildings(shaderProgram) {
+  //gl.uniform3fv(shaderProgram.uniformAmbientLightColor, [0.1, 0.1, 0.1]);
+  gl.uniform3fv(shaderProgram.uniformDiffuseLightColorBuilding, [2.0, 2.0, 2.0]);
+  gl.uniform3fv(shaderProgram.uniformSpecularLightColorBuilding, [0.0, 0.0, 0.0]);
 
   gl.uniform1f(shaderProgram.uniformAttenuationConstant, attenuationConstant);
   gl.uniform1f(shaderProgram.uniformAttenuationLinear, attenuationLinear);
@@ -554,13 +660,42 @@ function drawSceneCube(typeTextureNumber) {
 
 function drawPedestal(shaderProgram) {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  mat3.normalFromMat4(nMatrix, mvMatrix);
 
+  gl.uniform1i(shaderProgram.uflagSpotlight, flagSpotlight);
+  gl.uniform1i(shaderProgram.uflagBuildings, flagBuilding);
+  gl.uniform1i(shaderProgram.uflagSnowmans, flagSnowman);
+
+  mat3.normalFromMat4(nMatrix, mvMatrix);
   setMatrixUniforms(shaderProgram, pMatrix, mvMatrix, nMatrix);
-  setupLights(shaderProgram);
   setupContributionOfTextures(shaderProgram);
   drawSceneCube(texturesScene[0]);
   
+  //spotlight
+  let viewMatrix = mat4.clone(mvMatrix);
+  let lightPositionsEye = [];
+
+  let lightPosWorld = vec4.fromValues(cameraPosition[0], cameraPosition[1], cameraPosition[2], 1.0);
+  let lightPosEye = vec4.create();
+  vec4.transformMat4(lightPosEye, lightPosWorld, viewMatrix);
+  lightPositionsEye.push(lightPosEye[0], lightPosEye[1], lightPosEye[2]);
+
+  gl.uniform3fv(shaderProgram.uniformLightPositionsSpotlight, lightPositionsEye);
+  setupLightsSpotlight(shaderProgram);
+
+
+
+  //освещение снеговиков
+  viewMatrix = mat4.clone(mvMatrix);
+  lightPositionsEye = [];
+  for (let i = 0; i < 10; i++) {
+      let lightPosWorld = vec4.fromValues(lampPositions[i].x, 15.3, lampPositions[i].z, 1.0);
+      let lightPosEye = vec4.create();
+      vec4.transformMat4(lightPosEye, lightPosWorld, viewMatrix);
+      lightPositionsEye.push(lightPosEye[0], lightPosEye[1], lightPosEye[2]);
+  }
+  gl.uniform3fv(shaderProgram.uniformLightPositionsSnowmans, lightPositionsEye);
+  setupDigitalLightsSnowMans(shaderProgram);
+
   // Сохранить исходную матрицу
   for (let i = 0; i < 100; i++) {
     const originalMvMatrix = mat4.clone(mvMatrix);
@@ -597,6 +732,27 @@ function drawPedestal(shaderProgram) {
     drawModelLamp();
     mat4.copy(mvMatrix, originalMvMatrix);
   }
+
+  //освещение домов
+  viewMatrix = mat4.clone(mvMatrix);
+  lightPositionsEye = [];
+  for (let i = 0; i < 3; i++) {
+      let lightPosWorld = vec4.fromValues(housePositions[i].x, 15.5, housePositions[i].z, 1.0);
+      let lightPosEye = vec4.create();
+      vec4.transformMat4(lightPosEye, lightPosWorld, viewMatrix);
+      lightPositionsEye.push(lightPosEye[0], lightPosEye[1], lightPosEye[2]);
+  }
+  //освещение сараев
+  viewMatrix = mat4.clone(mvMatrix);
+  for (let i = 0; i < 2; i++) {
+      let lightPosWorld = vec4.fromValues(shedPositions[i].x, 15.5, shedPositions[i].z, 1.0);
+      let lightPosEye = vec4.create();
+      vec4.transformMat4(lightPosEye, lightPosWorld, viewMatrix);
+      lightPositionsEye.push(lightPosEye[0], lightPosEye[1], lightPosEye[2]);
+  }
+
+  gl.uniform3fv(shaderProgram.uniformLightPositionsBuildings, lightPositionsEye);
+  setupStaticLightsBuildings(shaderProgram);
 
   for (let i = 0; i < 3; i++) {
     const originalMvMatrix = mat4.clone(mvMatrix);
@@ -839,11 +995,6 @@ function initModelBuffersHouse(houseObjString) {
 
   const meshHouse = new Mesh(houseObjString);
 
-  console.log(meshHouse.indices.length);
-  console.log(meshHouse.vertices.length);
-  console.log(meshHouse.vertexNormals.length);
-  console.log(meshHouse.textures.length);
-
   const indices = meshHouse.indices;
   const vertices = meshHouse.vertices;
   const normals = meshHouse.vertexNormals;
@@ -897,11 +1048,11 @@ function drawModelHouse() {
 
 function initModelBuffersShed(houseObjString) {
   const meshHouse = new Mesh(houseObjString);
-
+/*
   console.log(meshHouse.indices.length);
   console.log(meshHouse.vertices.length);
   console.log(meshHouse.vertexNormals.length);
-  console.log(meshHouse.textures.length);
+  console.log(meshHouse.textures.length);*/
 
   const indices = meshHouse.indices;
   const vertices = meshHouse.vertices;
@@ -957,11 +1108,11 @@ function drawModelShed() {
 
 function initModelBuffersStone(houseObjString) {
   const meshHouse = new Mesh(houseObjString);
-
+/*
   console.log(meshHouse.indices.length);
   console.log(meshHouse.vertices.length);
   console.log(meshHouse.vertexNormals.length);
-  console.log(meshHouse.textures.length);
+  console.log(meshHouse.textures.length);*/
 
   const indices = meshHouse.indices;
   const vertices = meshHouse.vertices;
@@ -1121,76 +1272,3 @@ function countData(countTrees, countLamps, countHouses, countSheds, countStones)
 }
 
 changeShading();
-
-
-function initData () {
-objModel = null;
-objVerticesBuffer = null;
-objNormalsBuffer = null;
-objTextureCoordsBuffer = null;
-objIndicesBuffer = null;
-treeTextureCoordsBuffer = null; 
-
-lampModel = null;
-lampVerticesBuffer = null;
-lampNormalsBuffer = null;
-lampTextureCoordsBuffer = null;
-lampIndicesBuffer = null;
-
-houseModel = null;
-houseVerticesBuffer = null;
-houseNormalsBuffer = null;
-houseTextureCoordsBuffer = null;
-houseIndicesBuffer = null;
-
-shedIndicesCount = null;
-shedVerticesBuffer = null;
-shedNormalsBuffer = null;
-shedIndicesBuffer = null;
-shedTextureCoordsBuffer = null;
-
-stoneIndicesCount = null;
-stoneVerticesBuffer = null;
-stoneNormalsBuffer = null;
-stoneIndicesBuffer = null;
-stoneTextureCoordsBuffer = null;
-
-texturesScene = [];
-
-gl = null;
-vertexPositionAttribute = null;
-colorPositionAttribute = null;
-normPositionAttribute = null;
-vertexTextureAttribute = null;
-cubeVerticesBuffer = null;
-cubeIndicesBuffer = null;
-cubeColorsBuffer = null;
-cubeNormalsBuffer = null;
-textureCoordsBuffer = null;
-mvMatrix = mat4.create();
-pMatrix = mat4.create();
-nMatrix = mat3.create();
-rotationAngle = 0;
-rotationAngle2 = 0;
-rotationAngle3 = 0;
-
-attenuationConstant = 1.0;
-attenuationLinear = 0.009;
-attenuationQuadratic = 0.0032;
-ambientControl = 1;
-contributionControl = 1.0;
-
-cameraPosition = [0, 15.3, 15.0]; // Позиция камеры над кубом
-target = [0, 15.3, 0]; // Направление взгляда
-up = [0, 1, 0]; // Вектор "вверх" камеры
-cameraYaw = 0;
-treeIndicesCount = 0;
-lampIndicesCount = 0;
-houseIndicesCount = 0;
-
-treePositions = [];
-lampPositions = [];
-housePositions = [];
-shedPositions = [];
-stonePositions = [];
-}

@@ -32,9 +32,25 @@ export const fsSourceCubePhong = `#version 300 es
 precision highp float;
 
 uniform vec3 uLightPosition;
+uniform vec3 uLightPositionsSnowmans[10];
+uniform vec3 uLightPositionsBuildings[5];
+
 uniform vec3 uAmbientLightColor;
 uniform vec3 uDiffuseLightColor;
 uniform vec3 uSpecularLightColor;
+
+uniform vec3 uAmbientLightColorBuilding;
+uniform vec3 uDiffuseLightColorBuilding;
+uniform vec3 uSpecularLightColorBuilding;
+
+uniform vec3 uLightPositionsSpotlight;
+uniform vec3 uAmbientLightColorSpotlight;
+uniform vec3 uDiffuseLightColorSpotlight;
+uniform vec3 uSpecularLightColorSpotlight;
+uniform vec3 uLightDirectionSpotlight;
+
+uniform float uSpotlightCutoff;
+uniform float uSpotlightCutoffAttenuation;
 
 uniform float uAttenuationConstant;
 uniform float uAttenuationLinear;
@@ -42,6 +58,10 @@ uniform float uAttenuationQuadratic;
 uniform float uAmbientControl;
 
 uniform int typeLighting;
+
+uniform int flagSnowmans;
+uniform int flagBuildings;
+uniform int flagSpotlight;
 
 in vec3 vNormal;
 in vec3 vPositionEye;
@@ -59,50 +79,156 @@ uniform float contribution;
 void main(void) {
     // Normalize interpolated normal
     vec3 normal = normalize(vNormal);
-    
-    // Calculate light direction
-    vec3 lightDirection = normalize(uLightPosition - vPositionEye);
-    
-    // Diffuse calculation
-    float diffuseIntensity = max(dot(normal, lightDirection), 0.0);
-    
-    // Specular calculation
-    vec3 reflectDir = reflect(-lightDirection, normal);
+    vec3 lightWeighting = vec3(0);
     vec3 viewDir = normalize(-vPositionEye);
-    float specularIntensity = pow(max(dot(reflectDir, viewDir), 0.0), shininess);
-    
-    // Attenuation calculation
-    float distanceToLight = length(uLightPosition - vPositionEye);
-    float attenuation = 1.0 / (
-        uAttenuationConstant + 
-        uAttenuationLinear * distanceToLight + 
-        uAttenuationQuadratic * distanceToLight * distanceToLight
-    );
-    
-    // Combine lighting components
-    vec3 ambient = uAmbientLightColor * uAmbientControl;
-    vec3 diffuse = uDiffuseLightColor * diffuseIntensity;
-    vec3 specular = uSpecularLightColor * specularIntensity;
-    vec3 lightWeighting = ambient + (diffuse + specular) * attenuation;
 
-    if (typeLighting == 1) {
-        lightWeighting = diffuse * attenuation;
-    }
     if (typeLighting == 2) {
-        lightWeighting = ambient + (diffuse + specular) * attenuation;
-    }
-    if (typeLighting == 3) {
-        if (diffuseIntensity < 0.3)
-            diffuseIntensity = diffuseIntensity * 0.3;
-        else if ( diffuseIntensity < 0.8 )
-                diffuseIntensity = diffuseIntensity;
-        else
-            diffuseIntensity = diffuseIntensity * 1.3;
-        
-    diffuse = uDiffuseLightColor * diffuseIntensity;
-    lightWeighting = diffuse * attenuation;
+        lightWeighting += uAmbientLightColor * uAmbientControl;
     }
 
+    if (flagSnowmans == 1) {
+        for(int i=0; i<10; i++){
+            // Calculate light direction
+            vec3 lightDirection = normalize(uLightPositionsSnowmans[i] - vPositionEye);
+            
+            // Diffuse calculation
+            float diffuseIntensity = max(dot(normal, lightDirection), 0.0);
+            
+            // Specular calculation
+            vec3 reflectDir = reflect(-lightDirection, normal);
+            float specularIntensity = pow(max(dot(reflectDir, viewDir), 0.0), shininess);
+            
+            // Attenuation calculation
+            float distanceToLight = length(uLightPositionsSnowmans[i] - vPositionEye);
+            float attenuation = 1.0 / (
+                uAttenuationConstant + 
+                uAttenuationLinear * distanceToLight + 
+                uAttenuationQuadratic * distanceToLight * distanceToLight
+            );
+
+            // Combine lighting components
+            vec3 diffuse = uDiffuseLightColor * diffuseIntensity;
+            vec3 specular = uSpecularLightColor * specularIntensity;
+
+            vec3 totalContribution = vec3(0.0);
+
+            if (typeLighting == 1) {
+                totalContribution = diffuse * attenuation;
+            }
+            else if (typeLighting == 2) {
+                totalContribution =  (diffuse + specular) * attenuation;
+            }
+            else if (typeLighting == 3) {
+                if (diffuseIntensity < 0.3)
+                    diffuseIntensity = diffuseIntensity * 0.3;
+                else if ( diffuseIntensity < 0.8 )
+                        diffuseIntensity = diffuseIntensity;
+                else
+                    diffuseIntensity = diffuseIntensity * 1.3;
+                
+                totalContribution = diffuse * attenuation;
+            }
+            lightWeighting += totalContribution;
+        }
+    }
+
+    if (flagBuildings == 1) {
+        for(int i=0; i<5; i++){
+            // Calculate light direction
+            vec3 lightDirection = normalize(uLightPositionsBuildings[i] - vPositionEye);
+            
+            // Diffuse calculation
+            float diffuseIntensity = max(dot(normal, lightDirection), 0.0);
+            
+            // Specular calculation
+            vec3 reflectDir = reflect(-lightDirection, normal);
+            float specularIntensity = pow(max(dot(reflectDir, viewDir), 0.0), shininess);
+            
+            // Attenuation calculation
+            float distanceToLight = length(uLightPositionsBuildings[i] - vPositionEye);
+            float attenuation = 1.0 / (
+                uAttenuationConstant + 
+                uAttenuationLinear * distanceToLight + 
+                uAttenuationQuadratic * distanceToLight * distanceToLight
+            );
+
+            // Combine lighting components
+            vec3 diffuse = uDiffuseLightColorBuilding * diffuseIntensity;
+            vec3 specular = uSpecularLightColorBuilding * specularIntensity;
+
+            vec3 totalContribution = vec3(0.0);
+
+            if (typeLighting == 1) {
+                totalContribution = diffuse * attenuation;
+            }
+            else if (typeLighting == 2) {
+                totalContribution =  (diffuse + specular) * attenuation;
+            }
+            else if (typeLighting == 3) {
+                if (diffuseIntensity < 0.3)
+                    diffuseIntensity = diffuseIntensity * 0.3;
+                else if ( diffuseIntensity < 0.8 )
+                        diffuseIntensity = diffuseIntensity;
+                else
+                    diffuseIntensity = diffuseIntensity * 1.3;
+                
+                totalContribution = diffuse * attenuation;
+            }
+            lightWeighting += totalContribution;
+        }
+    }
+
+    if (flagSpotlight == 1) {
+        // Calculate light direction
+        vec3 lightDirection = normalize(uLightPositionsSpotlight - vPositionEye);
+        
+        // Diffuse calculation
+        float diffuseIntensity = max(dot(normal, lightDirection), 0.0);
+        
+        // Specular calculation
+        vec3 reflectDir = reflect(-lightDirection, normal);
+        float specularIntensity = pow(max(dot(reflectDir, viewDir), 0.0), shininess);
+        
+        // Attenuation calculation
+        float distanceToLight = length(uLightPositionsSpotlight - vPositionEye);
+        float attenuation = 1.0 / (
+            uAttenuationConstant + 
+            uAttenuationLinear * distanceToLight + 
+            uAttenuationQuadratic * distanceToLight * distanceToLight
+        );
+
+        // Combine lighting components
+        vec3 diffuse = uDiffuseLightColorSpotlight * diffuseIntensity;
+        vec3 specular = uSpecularLightColorSpotlight * specularIntensity;
+
+        vec3 totalContribution = vec3(0.0);
+
+        if (typeLighting == 1) {
+            totalContribution = diffuse * attenuation;
+        }
+        else if (typeLighting == 2) {
+            totalContribution = (diffuse + specular) * attenuation;
+        }
+        else if (typeLighting == 3) {
+            if (diffuseIntensity < 0.3)
+                diffuseIntensity = diffuseIntensity * 0.3;
+            else if (diffuseIntensity < 0.8)
+                diffuseIntensity = diffuseIntensity;
+            else
+                diffuseIntensity = diffuseIntensity * 1.3;
+            
+            totalContribution = diffuse * attenuation;
+        }
+
+        // Добавляем эффект прожектора с четкими краями uSpotlightCutoffAttenuation
+        vec3 L = normalize(vPositionEye); // Направление от света к фрагменту
+        vec3 spotlightDirection = vec3(0.0, -0.1, -1.0); // Направление прожектора
+        float spotDot = dot(L, spotlightDirection); // Косинус угла между направлениями
+        float spotFactor = smoothstep(uSpotlightCutoffAttenuation, uSpotlightCutoff, spotDot);
+        totalContribution *= spotFactor;
+
+        lightWeighting += totalContribution;
+    }
     vec4 texelNumber = texture(uSamplerNumber, vTextureCoords);
     vec4 texelMaterial = texture(uSamplerMaterial, vTextureCoords);
 

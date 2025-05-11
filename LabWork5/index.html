@@ -12,11 +12,11 @@
     <div class = "parametres">
       <div class ="linearAttenuation">
         <label>Линейное затухание</label>
-        <input type="range" id="linear" step="0.000001" min="0.0000000001" max="0.15" value="0.009"/>
+        <input type="range" id="linear" step="0.000001" min="0.0000000001" max="0.3" value="0.3"/>
       </div>
       <div class ="quadraticAttenuation">
         <label>Квадртатичное затухание</label>
-        <input type="range" id="quadratic" step="0.000001" min="0.0000000001" max="0.05" value="0.0032"/>
+        <input type="range" id="quadratic" step="0.000001" min="0.0000000001" max="0.2" value="0.2"/>
       </div>
       <div class ="ambientControl">
         <label>Мощность фонового источника света</label>
@@ -26,14 +26,14 @@
         <label>Шейдинг: </label>
         <select id = "typeShadingSelect">
           <option value="GouraudShading">Гуро</option>
-          <option value="PhongShading">Фонг</option>
+          <option value="PhongShading" selected>Фонг</option>
         </select>
       </div>
       <div class ="typeLighting">
         <label>Световая модель: </label>
         <select id = "typeLightingSelect">
           <option value="LambertLight">Ламберт</option>
-          <option value="PhongLight">Фонг</option>
+          <option value="PhongLight" selected>Фонг</option>
           <option value="ToonShading">Toon shading</option>
         </select>
       </div>
